@@ -4,15 +4,8 @@ pragma solidity >=0.8.0 <0.9.0;
 // Useful for debugging. Remove when deploying to a live network.
 import "hardhat/console.sol";
 
-// Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
-// import "@openzeppelin/contracts/access/Ownable.sol";
-
-/**
- * A smart contract that allows changing a state variable of the contract and tracking the changes
- * It also allows the owner to withdraw the Ether in the contract
- * @author BuidlGuidl
- */
-contract YourContract {
+contract Voting {
+    // State Variables
     address public immutable owner;
     string public greeting = "BUILD!";
 
@@ -55,11 +48,6 @@ contract YourContract {
         emit VoteCreated(voteId, _question, endTime);
     }
 
-    // Функция для проверки существования голосования
-    //function voteExists(uint256 _voteId) external view returns (bool) {
-    //    return (_voteId < voteCount && !votes[_voteId].isEnded); // Убеждаемся, что ID меньше счетчика и голосование не завершено
-    //}
-
     // Функция для голосования
     function vote(uint256 _voteId, bool _voteYes) external {
         Vote storage vote = votes[_voteId];
@@ -94,3 +82,4 @@ contract YourContract {
         return (vote.question, vote.yesVotes, vote.noVotes);
     }
 }
+

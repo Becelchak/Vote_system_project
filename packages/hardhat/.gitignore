@@ -9,12 +9,9 @@ coverage
 coverage.json
 
 # typechain
-typechain
-typechain-types
 
 # hardhat files
 cache
-artifacts
 
 # zkSync files
 artifacts-zk

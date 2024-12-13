@@ -1,19 +1,115 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ethers, Contract, Signer } from "ethers";
+import { Contract, ethers} from "ethers";
 import { useAccount } from "wagmi";
 import type { NextPage } from "next";
 import Link from "next/link";
 import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { Voting } from "../../hardhat/typechain-types/Voting";
+import { YourContract} from "../../hardhat/typechain-types/YourContract";
 
 // Адрес контракта и ABI
-const votingContractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";  // Убедитесь, что это строка с прямым адресом
-const votingAbi = [
+const votingContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const contractABI = [
   {
     "inputs": [
-      { "internalType": "string", "name": "_question", "type": "string" },
-      { "internalType": "uint256", "name": "_duration", "type": "uint256" }
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "voteId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "VoteCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "voteId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "voteYes",
+        "type": "bool"
+      }
+    ],
+    "name": "Voted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "voteId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "yesVotes",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "noVotes",
+        "type": "uint256"
+      }
+    ],
+    "name": "VotingEnded",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_question",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_duration",
+        "type": "uint256"
+      }
     ],
     "name": "createVote",
     "outputs": [],
@@ -21,7 +117,13 @@ const votingAbi = [
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "_voteId", "type": "uint256" }],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_voteId",
+        "type": "uint256"
+      }
+    ],
     "name": "endVote",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -29,8 +131,71 @@ const votingAbi = [
   },
   {
     "inputs": [
-      { "internalType": "uint256", "name": "_voteId", "type": "uint256" },
-      { "internalType": "bool", "name": "_voteYes", "type": "bool" }
+      {
+        "internalType": "uint256",
+        "name": "_voteId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getVoteResult",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "yesVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "noVotes",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "greeting",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_voteId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "_voteYes",
+        "type": "bool"
+      }
     ],
     "name": "vote",
     "outputs": [],
@@ -38,17 +203,78 @@ const votingAbi = [
     "type": "function"
   },
   {
-    "inputs": [{ "internalType": "uint256", "name": "_voteId", "type": "uint256" }],
-    "name": "getVoteResult",
+    "inputs": [],
+    "name": "voteCount",
     "outputs": [
-      { "internalType": "string", "name": "question", "type": "string" },
-      { "internalType": "uint256", "name": "yesVotes", "type": "uint256" },
-      { "internalType": "uint256", "name": "noVotes", "type": "uint256" }
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_voteId",
+        "type": "uint256"
+      }
+    ],
+    "name": "voteExists",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "votes",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "question",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "yesVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "noVotes",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endTime",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isEnded",
+        "type": "bool"
+      }
     ],
     "stateMutability": "view",
     "type": "function"
   }
 ];
+
 
 const Home: NextPage = () => {
   const { address: connectedAddress, isConnected } = useAccount();
@@ -60,37 +286,53 @@ const Home: NextPage = () => {
   });
 
   // Состояния для провайдера, подписанта и контракта
-  const [provider, setProvider] = useState<ethers.Provider | null>(null);
-  const [signer, setSigner] = useState<Signer | null>(null);
-  const [contract, setContract] = useState<Contract | null>(null);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  const [contract, setContract] = useState<Contract  | null>(null);
 
   useEffect(() => {
-    if (window.ethereum) {
-      // Инициализация провайдера
-      const web3Provider = new ethers.WebSocketProvider(window.ethereum);
-      setProvider(web3Provider);
+    const initProviderAndContract = async () => {
+      if (window.ethereum) {
+        try {
+          const browserProvider = new ethers.BrowserProvider(window.ethereum);
+          setProvider(browserProvider);
 
-      // Получаем подписанта асинхронно
-      const getSigner = async () => {
-        const userSigner = await web3Provider.getSigner();
-        setSigner(userSigner);
-      };
+          // Получаем подписанта
+          const userSigner = await browserProvider.getSigner();
+          setSigner(userSigner);
 
-      // Получаем контракт асинхронно
-      const contractInstance = new ethers.Contract(votingContractAddress, votingAbi, web3Provider);
-      setContract(contractInstance);
+          // Инициализируем контракт
+          const contractInstance = new ethers.Contract(votingContractAddress, contractABI, browserProvider);
+          setContract(contractInstance);
 
-      getSigner(); // Вызываем асинхронную функцию для получения подписанта
-    }
+        } catch (error) {
+          console.error("Error initializing provider, signer, or contract:", error);
+        }
+      } else {
+        console.error("Ethereum provider not found.");
+      }
+    };
+
+    initProviderAndContract(); // Выполняем инициализацию при монтировании компонента
   }, []);
 
   // Создание голосования
   const handleCreateVote = async () => {
-    if (contract && signer) {
+    //console.log("Signer:", signer);
+    //console.log("Contract:", contract);
+    if (contract && signer && question) {
       try {
+        console.log("????");
+        //const contractWithSigner = new ethers.Contract(votingContractAddress, contractABI, signer);
+        //console.log("Contract:", contractWithSigner);
+        //const tx = await contractWithSigner.createVote(question, 3600); // Пример: создаем голосование на 1 час
         const tx = await contract.createVote(question, 3600); // Пример: создаем голосование на 1 час
+        console.log("!!!!");
         await tx.wait();
         console.log("Vote created successfully!");
+        <button onClick={() => { console.log("Vote No clicked"); handleVote(false); }} className="btn btn-error ml-4">
+        Vote No
+      </button>
       } catch (error) {
         console.error("Error creating vote:", error);
       }
@@ -101,6 +343,7 @@ const Home: NextPage = () => {
   const handleVote = async (voteYes: boolean) => {
     if (contract && signer) {
       try {
+        //const contractWithSigner = new ethers.Contract(votingContractAddress, contractABI, signer);
         const tx = await contract.vote(voteId, voteYes);  // Голосуем за/против
         await tx.wait();
         console.log("Vote casted successfully!");
@@ -114,6 +357,7 @@ const Home: NextPage = () => {
   const handleEndVote = async () => {
     if (contract && signer) {
       try {
+        //const contractWithSigner = new ethers.Contract(votingContractAddress, contractABI, signer);
         const tx = await contract.endVote(voteId);  // Завершаем голосование
         await tx.wait();
         console.log("Vote ended successfully!");
@@ -126,12 +370,18 @@ const Home: NextPage = () => {
   // Получение результатов голосования
   const handleGetVoteResult = async () => {
     if (contract) {
+      //const contractWithSigner = new ethers.Contract(votingContractAddress, contractABI, signer);
       try {
+        // Проверяем существует ли голосование с данным ID
+        //const exists = await contractWithSigner.voteExists(voteId);
+        //if (!exists) {
+        //  alert("Voting with this ID does not exist!"); // Предупреждение
+        //  return;
+        //}
         const result = await contract.getVoteResult(voteId);
-        // Обновляем состояние с результатами голосования
         setVoteResult({
-          yesVotes: result.yesVotes.toNumber(), // Преобразуем BigNumber в число
-          noVotes: result.noVotes.toNumber()
+          yesVotes: Number(result.yesVotes.toString()),
+          noVotes: Number(result.noVotes.toString())
         });
       } catch (error) {
         console.error("Error fetching vote result:", error);
@@ -165,35 +415,34 @@ const Home: NextPage = () => {
           </button>
         </div>
 
+        <div className="mt-4 text-center">
+          <input
+            type="number"
+            placeholder="Enter Vote ID"
+            className="input input-bordered input-primary w-full max-w-xs"
+            value={voteId}
+            onChange={(e) => setVoteId(Number(e.target.value))}
+            min={0}
+          />
+        </div>
+
         <div className="mt-8 text-center">
-          <button
-            onClick={() => handleVote(true)}
-            className="btn btn-success"
-          >
+          <button onClick={() => handleVote(true)} className="btn btn-success">
             Vote Yes
           </button>
-          <button
-            onClick={() => handleVote(false)}
-            className="btn btn-error ml-4"
-          >
+          <button onClick={() => handleVote(false)} className="btn btn-error ml-4">
             Vote No
           </button>
-          <button
-            onClick={handleEndVote}
-            className="btn btn-warning ml-4"
-          >
+          <button onClick={handleEndVote} className="btn btn-warning ml-4">
             End Voting
           </button>
-          <button
-            onClick={handleGetVoteResult}
-            className="btn btn-info ml-4"
-          >
+          <button onClick={handleGetVoteResult} className="btn btn-info ml-4">
             Get Results
           </button>
         </div>
 
         <div className="mt-8">
-          <h3 className="text-lg font-bold">Vote Results:</h3>
+          <h3 className="text-lg font-bold">Vote Results for ID {voteId}:</h3>
           <p>Yes Votes: {voteResult.yesVotes}</p>
           <p>No Votes: {voteResult.noVotes}</p>
         </div>
@@ -201,5 +450,6 @@ const Home: NextPage = () => {
     </div>
   );
 };
+
 
 export default Home;
